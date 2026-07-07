@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FASUP' — Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --orange: #F69D00;
+  --orange-light: rgba(246,157,0,0.10);
+  --orange-mid: rgba(246,157,0,0.25);
+  --marron: #2E2017;
+  --marron-light: #5a4436;
+  --beige: #FBDEAA;
+  --beige-clair: #FFF6E2;
+  --blanc: #F7F6F5;
+  --white: #ffffff;
+  --red: #e74c3c;
+  --red-light: #fdf0ef;
+  --green: #27ae60;
+  --green-light: #eafaf1;
+  --shadow: 0 2px 12px rgba(46,32,23,0.06);
+  --shadow-lg: 0 6px 24px rgba(46,32,23,0.10);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --sidebar-w: 260px;
+  --topbar-h: 56px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Montserrat', 'Segoe UI', sans-serif;
+  background: var(--blanc);
+  color: var(--marron);
+  font-weight: 500;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ═══════ LAYOUT ═══════ */
+.app { display:flex; min-height:100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--marron);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  transition: transform .3s;
+}
+.sidebar-logo {
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sidebar-logo h1 { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+.sidebar-logo h1 span { color:var(--orange); }
+.sidebar-logo p { font-size:10px; text-transform:uppercase; letter-spacing:1.5px; opacity:.4; margin-top:2px; font-weight:600; }
+
+.sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+.sidebar-nav .nav-group { margin-bottom:20px; }
+.sidebar-nav .nav-group-label {
+  font-size:10px; text-transform:uppercase; letter-spacing:1.2px;
+  color:rgba(255,255,255,.3); padding:0 12px; margin-bottom:6px; font-weight:700;
+}
+.sidebar-nav a {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:8px;
+  color:rgba(255,255,255,.6); text-decoration:none;
+  font-size:13px; font-weight:600;
+  transition: all .15s;
+  cursor: pointer;
+}
+.sidebar-nav a:hover { background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); }
+.sidebar-nav a.active { background:var(--orange); color:var(--white); }
+.sidebar-nav a .nav-icon { font-size:16px; width:20px; text-align:center; flex-shrink:0; }
+.sidebar-nav a .nav-badge {
+  margin-left:auto; font-size:10px; background:rgba(255,255,255,.12);
+  padding:2px 8px; border-radius:10px; font-weight:600;
+}
+.sidebar-nav a.active .nav-badge { background:rgba(255,255,255,.25); }
+.sidebar-nav a.disabled { opacity:.3; pointer-events:none; }
+.sidebar-nav a.disabled .nav-badge { background:rgba(255,255,255,.08); }
+
+.sidebar-footer {
+  padding:16px 20px; border-top:1px solid rgba(255,255,255,.06);
+  font-size:10px; color:rgba(255,255,255,.25);
+}
+
+/* ── Main ── */
+.main { flex:1; margin-left:var(--sidebar-w); }
+
+/* ── Topbar ── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--white);
+  border-bottom: 1px solid rgba(46,32,23,.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topbar-left { display:flex; align-items:center; gap:16px; }
+.topbar-title { font-size:15px; font-weight:700; }
+.topbar-sub { font-size:12px; color:rgba(46,32,23,.4); font-weight:500; }
+.topbar-actions { display:flex; gap:8px; }
+.topbar-actions button {
+  background:var(--blanc); border:1px solid rgba(46,32,23,.1);
+  padding:7px 16px; border-radius:8px;
+  font-family:inherit; font-weight:600; font-size:12px;
+  color:var(--marron); cursor:pointer; transition:all .15s;
+}
+.topbar-actions button:hover { border-color:var(--orange); color:var(--orange); }
+
+/* ── Content ── */
+.content { padding:28px 32px 64px; max-width:1200px; }
+
+/* ── View Tabs ── */
+.view-tabs {
+  display:flex; gap:4px; background:rgba(46,32,23,.04);
+  border-radius:10px; padding:4px; margin-bottom:28px; width:fit-content;
+}
+.view-tab {
+  padding:9px 20px; border-radius:8px; font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .15s; border:none; background:transparent;
+  font-family:inherit; color:rgba(46,32,23,.5);
+}
+.view-tab:hover { color:var(--marron); }
+.view-tab.active { background:var(--white); color:var(--marron); box-shadow:var(--shadow); }
+
+/* ── Module & View panels ── */
+.module-content { display:none; }
+.module-content.active { display:block; }
+.view-panel { display:none; }
+.view-panel.active { display:block; }
+
+/* ── Section titles ── */
+.sec-title {
+  font-size:18px; font-weight:700; margin-bottom:6px;
+  display:flex; align-items:center; gap:10px;
+}
+.sec-title .pill {
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+  padding:4px 10px; border-radius:20px;
+}
+.pill-orange { background:var(--orange-light); color:#b37600; }
+.pill-marron { background:rgba(46,32,23,.07); color:var(--marron); }
+.pill-red { background:var(--red-light); color:var(--red); }
+.pill-green { background:var(--green-light); color:var(--green); }
+.sec-sub { font-size:13px; color:rgba(46,32,23,.45); margin-bottom:20px; }
+
+/* ── Cards ── */
+.card {
+  background:var(--white); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:24px; margin-bottom:20px;
+}
+.card-beige { background:var(--beige-clair); border:1px solid rgba(251,222,170,.4); box-shadow:none; }
+
+/* ── KPI Row ── */
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
+.kpi {
+  background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:20px 22px; position:relative; overflow:hidden;
+}
+.kpi::after {
+  content:''; position:absolute; top:0; left:0;
+  width:3px; height:100%; background:var(--orange);
+}
+.kpi.kpi-marron::after { background:var(--marron); }
+.kpi.kpi-red::after { background:var(--red); }
+.kpi.kpi-green::after { background:var(--green); }
+.kpi-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:rgba(46,32,23,.45); margin-bottom:4px; }
+.kpi-val { font-size:26px; font-weight:700; line-height:1.1; }
+.kpi-val.orange { color:var(--orange); }
+.kpi-val.green { color:var(--green); }
+.kpi-detail { font-size:11px; color:rgba(46,32,23,.4); margin-top:4px; }
+.kpi-compare { font-size:11px; font-weight:600; margin-top:6px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:4px; }
+.kpi-compare.up { background:var(--green-light); color:var(--green); }
+.kpi-compare.down { background:var(--red-light); color:var(--red); }
+
+/* ── Grids ── */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+.grid-full { grid-column:1/-1; }
+
+/* ── Tables ── */
+.table-wrap { overflow-x:auto; border-radius:var(--radius-sm); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+table th {
+  background:var(--marron); color:var(--white); font-weight:600;
+  text-align:left; padding:11px 14px; font-size:11px;
+  text-transform:uppercase; letter-spacing:.4px; white-space:nowrap;
+}
+table th:first-child { border-radius:var(--radius-sm) 0 0 0; }
+table th:last-child { border-radius:0 var(--radius-sm) 0 0; }
+table td { padding:10px 14px; border-bottom:1px solid rgba(46,32,23,.05); font-weight:500; }
+table tbody tr:nth-child(even) { background:rgba(251,222,170,.1); }
+table tbody tr:hover { background:rgba(246,157,0,.05); }
+table tr.row-total { background:var(--beige-clair)!important; font-weight:700; }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+td.hl { color:var(--orange); font-weight:700; }
+
+/* ── Charts ── */
+.chart-card { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px; }
+.chart-card h4 { font-size:13px; font-weight:700; margin-bottom:14px; }
+.chart-card canvas { max-height:300px; }
+
+/* ── Alert boxes ── */
+.alert {
+  border-radius:var(--radius-sm); padding:18px 22px;
+  margin-bottom:20px; font-size:13px; line-height:1.7;
+}
+.alert-warn { background:#fef8e7; border-left:4px solid var(--orange); }
+.alert-danger { background:var(--red-light); border-left:4px solid var(--red); }
+.alert-info { background:var(--beige-clair); border-left:4px solid var(--beige); }
+.alert strong { font-weight:700; }
+.alert p { margin-bottom:6px; }
+.alert p:last-child { margin-bottom:0; }
+
+/* ── ROI highlight ── */
+.roi-hero {
+  background: linear-gradient(135deg, var(--marron) 0%, #4a3628 100%);
+  border-radius: var(--radius);
+  color: var(--white);
+  padding: 36px 40px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 24px;
+  align-items: center;
+}
+.roi-hero-item { text-align:center; }
+.roi-hero-label { font-size:11px; text-transform:uppercase; letter-spacing:.8px; opacity:.5; margin-bottom:6px; font-weight:600; }
+.roi-hero-val { font-size:32px; font-weight:800; }
+.roi-hero-val.gold { color:var(--orange); }
+.roi-hero-sub { font-size:11px; opacity:.4; margin-top:2px; }
+
+/* ── Conclusion list ── */
+.insight-list { list-style:none; }
+.insight-list li {
+  padding:14px 20px; border-left:3px solid var(--orange);
+  background:var(--beige-clair); border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom:8px; font-size:13px;
+}
+.reco-list { list-style:none; counter-reset:r; }
+.reco-list li {
+  padding:14px 18px 14px 50px; background:var(--white);
+  border-radius:var(--radius-sm); box-shadow:var(--shadow);
+  margin-bottom:8px; font-size:13px; position:relative; counter-increment:r;
+}
+.reco-list li::before {
+  content:counter(r); position:absolute; left:16px; top:14px;
+  width:24px; height:24px; background:var(--orange); color:var(--white);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700;
+}
+
+/* ── Module placeholder ── */
+.module-placeholder {
+  text-align:center; padding:80px 40px;
+  color:rgba(46,32,23,.25);
+}
+.module-placeholder .ph-icon { font-size:48px; margin-bottom:16px; }
+.module-placeholder h3 { font-size:20px; font-weight:700; margin-bottom:8px; color:rgba(46,32,23,.35); }
+.module-placeholder p { font-size:14px; }
+
+/* ── Add data button ── */
+.btn-add {
+  background:var(--orange)!important; color:var(--white)!important;
+  border-color:var(--orange)!important; font-weight:700!important;
+}
+.btn-add:hover { background:#e08f00!important; }
+
+/* ── Data modal ── */
+.data-modal-overlay {
+  display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(46,32,23,.5); z-index:200;
+  justify-content:center; align-items:center;
+}
+.data-modal-overlay.open { display:flex; }
+.data-modal {
+  background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow-lg);
+  width:90%; max-width:560px; max-height:85vh; overflow-y:auto;
+  padding:32px;
+}
+.data-modal h3 { font-size:18px; font-weight:700; margin-bottom:4px; }
+.data-modal .modal-sub { font-size:13px; color:rgba(46,32,23,.45); margin-bottom:20px; }
+.data-modal label { display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:var(--marron); }
+.data-modal input, .data-modal textarea {
+  width:100%; padding:10px 14px; border:1px solid rgba(46,32,23,.12);
+  border-radius:8px; font-family:inherit; font-size:13px; font-weight:500;
+  color:var(--marron); background:var(--blanc); margin-bottom:16px;
+  transition:border .15s;
+}
+.data-modal input:focus, .data-modal textarea:focus { outline:none; border-color:var(--orange); }
+.data-modal textarea { min-height:160px; resize:vertical; line-height:1.6; }
+.data-modal .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
+.data-modal .modal-actions button {
+  padding:10px 24px; border-radius:8px; font-family:inherit;
+  font-size:13px; font-weight:700; cursor:pointer; border:1px solid rgba(46,32,23,.1);
+  transition:all .15s;
+}
+.modal-btn-cancel { background:var(--blanc); color:var(--marron); }
+.modal-btn-cancel:hover { background:rgba(46,32,23,.06); }
+.modal-btn-copy { background:var(--orange); color:var(--white); border-color:var(--orange)!important; }
+.modal-btn-copy:hover { background:#e08f00; }
+.modal-toast {
+  display:none; position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
+  background:var(--marron); color:var(--white); padding:12px 28px;
+  border-radius:10px; font-size:13px; font-weight:600; z-index:300;
+  box-shadow:var(--shadow-lg);
+}
+
+/* ── Spacer ── */
+.spacer { height:32px; }
+.spacer-sm { height:16px; }
+
+/* ── Print ── */
+@media print {
+  .sidebar, .topbar { display:none!important; }
+  .main { margin-left:0!important; }
+  .content { padding:16px; }
+  .card, .kpi, .chart-card { box-shadow:none; border:1px solid #eee; break-inside:avoid; }
+  .view-tabs { display:none; }
+  .view-panel { display:block!important; }
+}
+
+/* ── Sidebar overlay ── */
+.sidebar-overlay {
+  display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(46,32,23,.4); z-index:99; cursor:pointer;
+}
+
+/* ── Responsive ── */
+@media (max-width:1024px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main { margin-left:0; }
+  .grid-2, .grid-3 { grid-template-columns:1fr; }
+  .roi-hero { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:600px) {
+  .kpi-row { grid-template-columns:1fr; }
+  .content { padding:16px; }
+  .roi-hero { grid-template-columns:1fr; padding:24px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════ SIDEBAR ═══════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>FASUP'<span> Hub</span></h1>
+    <p>Mission Control</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">Acquisition</div>
+      <a data-module="reseaux" onclick="switchModule('reseaux')">
+        <span class="nav-icon">📱</span> Réseaux sociaux
+      </a>
+      <a data-module="ads" onclick="switchModule('ads')">
+        <span class="nav-icon">📣</span> Campagnes Ads
+      </a>
+      <a data-module="salons" onclick="switchModule('salons')">
+        <span class="nav-icon">🎪</span> Salons étudiants
+      </a>
+      <a data-module="landing" onclick="switchModule('landing')">
+        <span class="nav-icon">🌐</span> Landing pages
+      </a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Conversion</div>
+      <a class="active" data-module="leads" onclick="switchModule('leads')">
+        <span class="nav-icon">📊</span> Leads & Transformation
+      </a>
+      <a data-module="mailing" onclick="switchModule('mailing')">
+        <span class="nav-icon">📧</span> Mailing & Campagnes
+      </a>
+      <a data-module="tunnel" onclick="switchModule('tunnel')">
+        <span class="nav-icon">🔄</span> Tunnel de conversion
+      </a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Finance</div>
+      <a data-module="budget" onclick="switchModule('budget')">
+        <span class="nav-icon">💰</span> Budget & ROI
+      </a>
+      <a data-module="pricing" onclick="switchModule('pricing')">
+        <span class="nav-icon">🏷️</span> Pricing
+      </a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    Données HubSpot · Juillet 2026
+  </div>
+</aside>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ═══════ MAIN ═══════ -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button onclick="toggleSidebar()" style="display:none;background:none;border:none;font-size:20px;cursor:pointer;" id="burger">☰</button>
+      <div>
+        <div class="topbar-title">Leads & Transformation</div>
+        <div class="topbar-sub">Provenance des contacts · HubSpot · À date du 3 juillet 2026</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn-add" onclick="openDataModal()">＋ Ajouter des données</button>
+      <button onclick="window.print()">⎙ Export PDF</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ═══════ MODULE: LEADS ═══════ -->
+    <div class="module-content active" id="module-leads">
+
+    <!-- ═══════ VIEW TABS ═══════ -->
+    <div class="view-tabs">
+      <button class="view-tab active" onclick="switchView('global')">Vue globale</button>
+      <button class="view-tab" onclick="switchView('2025')">2025</button>
+      <button class="view-tab" onclick="switchView('2026')">2026</button>
+      <button class="view-tab" onclick="switchView('com')">Pôle Com</button>
+      <button class="view-tab" onclick="switchView('vigilance')">Vigilance</button>
+    </div>
+
+    <!-- ═══════════════════════════════ -->
+    <!-- VUE GLOBALE                     -->
+    <!-- ═══════════════════════════════ -->
+    <div class="view-panel active" id="view-global">
+
+      <!-- KPI headline -->
+      <div class="kpi-row" style="grid-template-columns:repeat(5,1fr);">
+        <div class="kpi kpi-marron">
+          <div class="kpi-label">Fiches 2025</div>
+          <div class="kpi-val">1 124</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Fiches 2026</div>
+          <div class="kpi-val">3 279</div>
+          <div class="kpi-compare up">▲ ×2,9</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Placés 2025</div>
+          <div class="kpi-val orange">439</div>
+          <div class="kpi-detail">Taux : 39,1 %</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Placés 2026</div>
+          <div class="kpi-val orange">119</div>
+          <div class="kpi-detail">Taux : 3,6 % · en cours</div>
+        </div>
+        <div class="kpi kpi-green">
+          <div class="kpi-label">CA total estimé</div>
+          <div class="kpi-val orange">4 073 400 €</div>
+          <div class="kpi-detail">2025 + 2026</div>
+        </div>
+      </div>
+
+      <!-- Graphiques principaux -->
+      <div class="grid-2">
+        <div class="chart-card">
+          <h4>Étudiants placés par provenance — 2025 vs 2026</h4>
+          <canvas id="chart-places"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4>Taux de transformation — 2025 vs 2026</h4>
+          <canvas id="chart-taux"></canvas>
+        </div>
+      </div>
+
+      <div class="spacer-sm"></div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <h4>Répartition des fiches 2025</h4>
+          <canvas id="chart-fiches-2025"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4>Répartition des fiches 2026</h4>
+          <canvas id="chart-fiches-2026"></canvas>
+        </div>
+      </div>
+
+      <div class="spacer-sm"></div>
+
+      <div class="chart-card">
+        <h4>CA estimé par provenance — 2025 vs 2026</h4>
+        <canvas id="chart-ca" style="max-height:340px;"></canvas>
+      </div>
+
+      <div class="spacer"></div>
+
+      <!-- Conclusions -->
+      <h3 class="sec-title">Conclusions clés</h3>
+      <div class="sec-sub">Points saillants de l'analyse croisée 2025 / 2026</div>
+      <ul class="insight-list">
+        <li><strong>Parcoursup reste le canal n°1 en volume</strong> — 322 fiches en 2025, 1 474 en 2026. Premier pourvoyeur de contacts.</li>
+        <li><strong>Le bouche-à-oreille affiche le meilleur taux de transformation</strong> — 75,3 % en 2025, 12,1 % en 2026. Un canal de qualité à ne pas négliger.</li>
+        <li><strong>Les salons ont multiplié le volume par 8,9</strong> entre 2025 et 2026, mais avec un taux de transformation encore faible (3,4 %). L'enjeu est de mieux convertir ce volume.</li>
+        <li><strong>Les taux de transformation 2026 sont globalement plus bas</strong> — le recrutement 2026 est encore en cours, tous les contacts n'ont pas encore été convertis.</li>
+        <li><strong>Les provenances inconnues représentent 1 080 400 € de CA estimé</strong> sur deux ans. Ce volume masque la performance réelle de certains canaux.</li>
+      </ul>
+
+      <div class="spacer"></div>
+
+      <!-- Recommandations -->
+      <h3 class="sec-title">Recommandations opérationnelles</h3>
+      <div class="spacer-sm"></div>
+      <ol class="reco-list">
+        <li><strong>Systématiser la saisie de la provenance dans HubSpot.</strong> Chaque contact doit avoir une provenance, y compris pour les canaux digitaux. Champ obligatoire ou réflexe systématique.</li>
+        <li><strong>Fiabiliser le lien entre contacts et transactions HubSpot.</strong> L'écart de 19 contacts entre les fiches Lions 2026 et Galia doit être investigué.</li>
+        <li><strong>Analyser les provenances inconnues rétroactivement.</strong> Identifier la source réelle des 570 fiches sans provenance pour obtenir une lecture juste.</li>
+        <li><strong>Optimiser la conversion des leads salons.</strong> 1 100 fiches en 2026 pour 37 placés (3,4 %) — levier de croissance via un meilleur suivi post-salon.</li>
+        <li><strong>Capitaliser sur le bouche-à-oreille.</strong> Meilleur taux de transformation. Explorer le parrainage, les témoignages, la fidélisation.</li>
+        <li><strong>Maintenir les investissements du pôle communication.</strong> Ratio CA/coût très positif et probablement sous-estimé.</li>
+        <li><strong>Mettre en place un suivi mensuel.</strong> Ce dashboard doit devenir un outil de pilotage régulier en comité de direction.</li>
+      </ol>
+    </div>
+
+    <!-- ═══════════════════════════════ -->
+    <!-- VUE 2025                        -->
+    <!-- ═══════════════════════════════ -->
+    <div class="view-panel" id="view-2025">
+
+      <h3 class="sec-title">Année 2025 <span class="pill pill-marron">Donnée HubSpot</span></h3>
+      <div class="sec-sub">Données fiables — étudiants encore en LM 2025</div>
+
+      <div class="kpi-row">
+        <div class="kpi kpi-marron"><div class="kpi-label">Fiches enregistrées</div><div class="kpi-val">1 124</div></div>
+        <div class="kpi"><div class="kpi-label">Étudiants placés</div><div class="kpi-val orange">439</div></div>
+        <div class="kpi"><div class="kpi-label">Taux de transformation</div><div class="kpi-val">39,1 %</div></div>
+        <div class="kpi kpi-green"><div class="kpi-label">CA estimé</div><div class="kpi-val orange">3 204 700 €</div></div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Provenance</th><th style="text-align:right">Fiches</th><th style="text-align:right">Placés</th><th style="text-align:right">Taux transfo.</th><th style="text-align:right">CA estimé</th></tr></thead>
+            <tbody>
+              <tr><td>Salons</td><td class="num">124</td><td class="num">25</td><td class="num">20,2 %</td><td class="num">182 500 €</td></tr>
+              <tr><td>Site web</td><td class="num">67</td><td class="num">20</td><td class="num">29,9 %</td><td class="num">146 000 €</td></tr>
+              <tr><td>Parcoursup</td><td class="num">322</td><td class="num">118</td><td class="num hl">36,6 %</td><td class="num hl">861 400 €</td></tr>
+              <tr><td>Indeed</td><td class="num">2</td><td class="num">0</td><td class="num">0 %</td><td class="num">0 €</td></tr>
+              <tr><td>Bouche-à-oreille</td><td class="num">85</td><td class="num">64</td><td class="num hl">75,3 %</td><td class="num">467 200 €</td></tr>
+              <tr><td>RS / pub / jeux concours</td><td class="num">97</td><td class="num">21</td><td class="num">21,6 %</td><td class="num">153 300 €</td></tr>
+              <tr><td>Candidatures parallèles</td><td class="num">124</td><td class="num">62</td><td class="num">50,0 %</td><td class="num">452 600 €</td></tr>
+              <tr><td>Provenance inconnue</td><td class="num">303</td><td class="num">129</td><td class="num">42,6 %</td><td class="num">941 700 €</td></tr>
+              <tr class="row-total"><td>Total</td><td class="num">1 124</td><td class="num">439</td><td class="num">39,1 %</td><td class="num">3 204 700 €</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <p><strong>Hypothèse CA :</strong> chaque étudiant placé = <strong>7 300 €</strong> de CA potentiel (sous réserve de rétention sur 2 ans). Pour 2025, les chiffres sont plus fiables car les étudiants sont encore en LM 2025.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ -->
+    <!-- VUE 2026                        -->
+    <!-- ═══════════════════════════════ -->
+    <div class="view-panel" id="view-2026">
+
+      <h3 class="sec-title">Année 2026 <span class="pill pill-orange">CA potentiel</span></h3>
+      <div class="sec-sub">Chiffres à date — recrutement en cours, sous réserve de rétention</div>
+
+      <div class="kpi-row">
+        <div class="kpi kpi-marron"><div class="kpi-label">Fiches enregistrées</div><div class="kpi-val">3 279</div></div>
+        <div class="kpi"><div class="kpi-label">Placés (par provenance)</div><div class="kpi-val orange">119</div></div>
+        <div class="kpi"><div class="kpi-label">Taux de transformation</div><div class="kpi-val">3,6 %</div></div>
+        <div class="kpi"><div class="kpi-label">CA potentiel détaillé</div><div class="kpi-val orange">868 700 €</div></div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Provenance</th><th style="text-align:right">Fiches</th><th style="text-align:right">Placés</th><th style="text-align:right">Taux transfo.</th><th style="text-align:right">CA potentiel</th></tr></thead>
+            <tbody>
+              <tr><td>Salons</td><td class="num">1 100</td><td class="num">37</td><td class="num">3,4 %</td><td class="num">270 100 €</td></tr>
+              <tr><td>Site web</td><td class="num">54</td><td class="num">4</td><td class="num">7,4 %</td><td class="num">29 200 €</td></tr>
+              <tr><td>Parcoursup</td><td class="num">1 474</td><td class="num">40</td><td class="num">2,7 %</td><td class="num hl">292 000 €</td></tr>
+              <tr><td>Indeed</td><td class="num">177</td><td class="num">4</td><td class="num">2,3 %</td><td class="num">29 200 €</td></tr>
+              <tr><td>Bouche-à-oreille</td><td class="num">99</td><td class="num">12</td><td class="num hl">12,1 %</td><td class="num">87 600 €</td></tr>
+              <tr><td>RS / pub / jeux concours</td><td class="num">30</td><td class="num">0</td><td class="num">0 %</td><td class="num">0 €</td></tr>
+              <tr><td>Candidatures parallèles</td><td class="num">78</td><td class="num">3</td><td class="num">3,8 %</td><td class="num">21 900 €</td></tr>
+              <tr><td>Provenance inconnue</td><td class="num">267</td><td class="num">19</td><td class="num">7,1 %</td><td class="num">138 700 €</td></tr>
+              <tr class="row-total"><td>Total détaillé</td><td class="num">3 279</td><td class="num">119</td><td class="num">3,6 %</td><td class="num">868 700 €</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <p><strong>Hypothèse CA :</strong> chaque étudiant placé = <strong>7 300 €</strong> de CA potentiel. Pour 2026, il s'agit d'un CA potentiel si les étudiants actuellement placés restent bien les deux ans chez FASUP'.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ -->
+    <!-- VUE PÔLE COM                    -->
+    <!-- ═══════════════════════════════ -->
+    <div class="view-panel" id="view-com">
+
+      <h3 class="sec-title">Pôle Communication <span class="pill pill-green">ROI positif</span></h3>
+      <div class="sec-sub">Périmètre : site web + RS / pub / jeux concours · Coûts hors salaires</div>
+
+      <!-- ROI Hero -->
+      <div class="roi-hero">
+        <div class="roi-hero-item">
+          <div class="roi-hero-label">Placés attribués</div>
+          <div class="roi-hero-val">45</div>
+          <div class="roi-hero-sub">2 années cumulées</div>
+        </div>
+        <div class="roi-hero-item">
+          <div class="roi-hero-label">CA estimé</div>
+          <div class="roi-hero-val gold">328 500 €</div>
+        </div>
+        <div class="roi-hero-item">
+          <div class="roi-hero-label">Coûts hors salaires</div>
+          <div class="roi-hero-val">13 000 €</div>
+        </div>
+        <div class="roi-hero-item">
+          <div class="roi-hero-label">Ratio CA / Coût</div>
+          <div class="roi-hero-val gold">×25,3</div>
+          <div class="roi-hero-sub">Probablement sous-estimé</div>
+        </div>
+      </div>
+
+      <!-- Détails par année -->
+      <div class="grid-2">
+        <div class="card">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:14px;">2024-2025 <span class="pill pill-marron" style="margin-left:8px;">Coût : 5 000 €</span></h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Canal</th><th style="text-align:right">Placés</th><th style="text-align:right">CA estimé</th></tr></thead>
+              <tbody>
+                <tr><td>Site web</td><td class="num">20</td><td class="num">146 000 €</td></tr>
+                <tr><td>RS / pub / jeux concours</td><td class="num">21</td><td class="num">153 300 €</td></tr>
+                <tr class="row-total"><td>Total</td><td class="num">41</td><td class="num">299 300 €</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top:12px;font-size:12px;"><strong>CA - Coût :</strong> 294 300 € · <strong>Ratio :</strong> <span style="color:var(--orange);font-weight:700;">×59,9</span></p>
+        </div>
+
+        <div class="card">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:14px;">2025-2026 <span class="pill pill-orange" style="margin-left:8px;">Coût : 8 000 €</span></h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Canal</th><th style="text-align:right">Placés</th><th style="text-align:right">CA estimé</th></tr></thead>
+              <tbody>
+                <tr><td>Site web</td><td class="num">4</td><td class="num">29 200 €</td></tr>
+                <tr><td>RS / pub / jeux concours</td><td class="num">0</td><td class="num">0 €</td></tr>
+                <tr class="row-total"><td>Total</td><td class="num">4</td><td class="num">29 200 €</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top:12px;font-size:12px;"><strong>CA - Coût :</strong> 21 200 € · <strong>Ratio :</strong> <span style="color:var(--orange);font-weight:700;">×3,7</span></p>
+        </div>
+      </div>
+
+      <!-- Graphique ROI -->
+      <div class="chart-card">
+        <h4>Coût vs CA estimé — Pôle Communication</h4>
+        <canvas id="chart-roi" style="max-height:280px;"></canvas>
+      </div>
+
+      <div class="spacer-sm"></div>
+
+      <div class="alert alert-info">
+        <p>Le pôle communication semble générer un <strong>retour sur investissement positif</strong>, même avec une lecture prudente. Ces chiffres sont probablement <strong>sous-estimés</strong> : de nombreux contacts sans provenance ont pu venir du site web, des réseaux sociaux, des publicités ou des jeux concours.</p>
+        <p>Les coûts comprennent uniquement les dépenses liées aux déplacements, au print, à la publicité et aux actions de communication (hors salaires).</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ -->
+    <!-- VUE VIGILANCE                   -->
+    <!-- ═══════════════════════════════ -->
+    <div class="view-panel" id="view-vigilance">
+
+      <!-- Méthodologie -->
+      <h3 class="sec-title">Méthodologie et limites <span class="pill pill-orange">À lire d'abord</span></h3>
+      <div class="sec-sub">Avant d'interpréter les chiffres</div>
+
+      <div class="alert alert-warn">
+        <p><strong>Source de données :</strong> extraction réalisée depuis <strong>HubSpot</strong>, et non depuis Tally. Les chiffres doivent être analysés avec prudence, notamment pour 2025.</p>
+        <p>Certains contacts n'ont pas de provenance renseignée. Historiquement, les centres transféraient la provenance uniquement pour <strong>Parcoursup</strong> et les <strong>salons</strong> (utiles comme accroche commerciale). Les autres — réseaux sociaux, publicité, jeux concours, site web, bouche-à-oreille — étaient beaucoup moins renseignées.</p>
+        <p>Conséquence : ces canaux sont <strong>probablement sous-estimés</strong>. Pour 2026, les données sont plus réalistes car les équipes travaillent davantage avec HubSpot.</p>
+      </div>
+
+      <div class="spacer-sm"></div>
+
+      <!-- Provenances inconnues -->
+      <h3 class="sec-title">Provenances inconnues <span class="pill pill-red">570 fiches</span></h3>
+      <div class="sec-sub">Un volume trop important pour être ignoré</div>
+
+      <div class="kpi-row">
+        <div class="kpi kpi-red"><div class="kpi-label">Fiches sans provenance</div><div class="kpi-val">570</div><div class="kpi-detail">303 en 2025 + 267 en 2026</div></div>
+        <div class="kpi"><div class="kpi-label">Étudiants placés</div><div class="kpi-val orange">148</div><div class="kpi-detail">129 en 2025 + 19 en 2026</div></div>
+        <div class="kpi kpi-green"><div class="kpi-label">CA estimé « invisible »</div><div class="kpi-val orange">1 080 400 €</div><div class="kpi-detail">941 700 + 138 700 €</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:8px;">2025</h4>
+          <p style="font-size:13px;">303 fiches · 129 placés · <strong>42,6 %</strong> de transformation · <strong style="color:var(--orange)">941 700 €</strong></p>
+        </div>
+        <div class="card">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:8px;">2026</h4>
+          <p style="font-size:13px;">267 fiches · 19 placés · <strong>7,1 %</strong> de transformation · <strong style="color:var(--orange)">138 700 €</strong></p>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <p>La provenance inconnue peut contenir des étudiants issus des réseaux sociaux, du site web, du bouche-à-oreille ou d'autres actions locales non renseignées. <strong>Améliorer la qualité de saisie dans HubSpot</strong> est indispensable pour mesurer la performance réelle de chaque canal.</p>
+      </div>
+
+      <div class="spacer"></div>
+
+      <!-- Écart HubSpot / Galia -->
+      <h3 class="sec-title">Écart HubSpot / Galia <span class="pill pill-red">19 contacts</span></h3>
+      <div class="sec-sub">Incohérence entre contacts et transactions 2026</div>
+
+      <div class="alert alert-danger">
+        <p>Dans les transactions HubSpot au stade « Étudiant placé — entrée dans Galia » : <strong>102 contacts</strong>.</p>
+        <p>Dans les contacts HubSpot en statut « Fiche d'information Lions 2026 » : <strong>121 contacts</strong>.</p>
+        <p><strong>Écart : 19 contacts.</strong> Ces deux chiffres devraient être identiques ou très proches.</p>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Référence</th><th style="text-align:right">Contacts</th><th style="text-align:right">CA potentiel</th></tr></thead>
+            <tbody>
+              <tr><td>Transactions HubSpot / Galia</td><td class="num">102</td><td class="num">744 600 €</td></tr>
+              <tr><td>Détaillé par provenance</td><td class="num">119</td><td class="num">868 700 €</td></tr>
+              <tr><td>Fiche d'information Lions 2026</td><td class="num">121</td><td class="num">883 300 €</td></tr>
+              <tr class="row-total"><td>Écart Galia vs Lions 2026</td><td class="num hl">19</td><td class="num hl">138 700 €</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:12px;font-size:12px;color:rgba(46,32,23,.5);">Les différences viennent probablement de filtres, statuts, transactions non mises à jour, contacts sans transaction ou problèmes de cohérence entre objets HubSpot.</p>
+      </div>
+
+      <div class="spacer-sm"></div>
+
+      <div class="alert alert-info">
+        <p><strong>Hypothèse de calcul CA :</strong> chaque étudiant placé = <strong>7 300 €</strong> de chiffre d'affaires potentiel, sous réserve que les étudiants restent bien les deux années chez FASUP' sans rupture.</p>
+      </div>
+    </div>
+
+    </div><!-- /.module-leads -->
+
+    <!-- ═══════ MODULE: MAILING ═══════ -->
+    <div class="module-content" id="module-mailing">
+
+      <!-- View tabs mailing -->
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchMailView('m-overview')">Vue d'ensemble</button>
+        <button class="view-tab" onclick="switchMailView('m-heatmap')">Heatmap campus</button>
+        <button class="view-tab" onclick="switchMailView('m-top')">Top / Alertes</button>
+        <button class="view-tab" onclick="switchMailView('m-synthese')">Synthèse & Priorités</button>
+      </div>
+
+      <!-- ── VUE D'ENSEMBLE ── -->
+      <div class="view-panel active" id="m-overview">
+
+        <h3 class="sec-title">Audit Workflows HubSpot <span class="pill pill-orange">33 familles mesurées</span></h3>
+        <div class="sec-sub">Périmètre 1.1 → 16.1 · 19 campus nationaux · Extraction 03/07/2026</div>
+
+        <div class="kpi-row">
+          <div class="kpi kpi-green"><div class="kpi-label">Familles mesurées</div><div class="kpi-val orange">33</div></div>
+          <div class="kpi kpi-red"><div class="kpi-label">Sans métriques</div><div class="kpi-val">18</div></div>
+          <div class="kpi kpi-marron"><div class="kpi-label">Campus couverts</div><div class="kpi-val">19</div></div>
+          <div class="kpi kpi-red"><div class="kpi-label">Alertes délivrabilité</div><div class="kpi-val" style="color:var(--red);">8</div></div>
+        </div>
+
+        <!-- Couverture -->
+        <div class="grid-2">
+          <div class="card" style="border-top:3px solid var(--green);">
+            <h4 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--green);">✓ 33 familles avec métriques</h4>
+            <p style="font-size:12px;color:rgba(46,32,23,.6);line-height:1.8;">1.1 · 2.1 · 2.2 · 2.3 · 2.4 · 3.1 · 3.2 · 4.1 · 6.1 · 6.2 · 6.3 · 6.4 · 7.1 · 7.2 · 7.3 · 7.4 · 8.1 · 8.2 · 8.3 · 9.1 · 9.2 · 9.3 · 10.1 · 11.1 · 12.1 · 13.1 · 14.1 · 14.2 · 14.3 · 14.4 · 15.1 · 15.2 · 16.1</p>
+          </div>
+          <div class="card" style="border-top:3px solid var(--red);">
+            <h4 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--red);">⚠ 18 familles non mesurées</h4>
+            <p style="font-size:12px;color:rgba(46,32,23,.6);line-height:1.8;">2.5 · 3.3 · 3.4 · 3.5 · 3.6 · 5.1 · 5.2 · 5.3 · 5.4 · 8.4 · 8.5 · 9.4 · 14.5 · 14.6 · 15.3 · 15.4 · 15.5 · 15.6</p>
+          </div>
+        </div>
+
+        <div class="alert alert-warn">
+          <p>Ces 18 familles existent dans les workflows HubSpot mais aucune métrique d'envoi n'a été retrouvée dans les exports. Elles sont <strong>présentes mais non mesurées</strong> — à clarifier.</p>
+        </div>
+
+        <div class="spacer-sm"></div>
+
+        <!-- Charts mailing -->
+        <div class="grid-2">
+          <div class="chart-card">
+            <h4>Alertes délivrabilité · Premiers emails (1.1 → 3.1)</h4>
+            <canvas id="chart-mail-deliv"></canvas>
+          </div>
+          <div class="chart-card">
+            <h4>Meilleurs taux d'ouverture & clic du périmètre</h4>
+            <canvas id="chart-mail-open"></canvas>
+          </div>
+        </div>
+
+        <div class="spacer-sm"></div>
+
+        <div class="alert alert-info">
+          <p><strong>Constat clé :</strong> Les premiers emails de séquence (1.1, 2.1, 3.1) concentrent les problèmes de délivrabilité et les taux d'ouverture quasi nuls. En revanche, les emails 4.1 et 14.2 prouvent qu'un meilleur niveau d'engagement est atteignable avec un bon CTA.</p>
+        </div>
+      </div>
+
+      <!-- ── HEATMAP ── -->
+      <div class="view-panel" id="m-heatmap">
+
+        <h3 class="sec-title">Heatmap délivrabilité <span class="pill pill-marron">Campus × Famille</span></h3>
+        <div class="sec-sub">Couleurs : <span style="color:var(--green);font-weight:700;">■</span> ≥95 % · <span style="color:#D97706;font-weight:700;">■</span> 90–94 % · <span style="color:var(--red);font-weight:700;">■</span> &lt;90 % · <span style="color:#9CA3AF;">■</span> pas de données</div>
+
+        <div class="card" style="overflow-x:auto;">
+          <table style="min-width:900px;font-size:11px;">
+            <thead>
+              <tr>
+                <th style="text-align:left;min-width:100px;">Campus</th>
+                <th>1.1</th><th>2.1</th><th>2.2</th><th>2.3</th><th>2.4</th>
+                <th>3.1</th><th>3.2</th><th>4.1</th><th>6.1</th><th>7.1</th>
+                <th>14.1</th><th>14.2</th><th>14.3</th><th>14.4</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Angers</td><td class="num hl">95</td><td class="num">98</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">98</td><td class="num">98</td><td class="num">100</td><td class="num">94</td><td class="num" style="color:#9CA3AF;">—</td><td class="num">97</td><td class="num">100</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td>Bordeaux</td><td class="num">100</td><td class="num">97</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">98</td><td class="num">100</td><td class="num">97</td><td class="num">97</td><td class="num">100</td><td class="num">96</td><td class="num">100</td><td class="num">100</td><td class="num">100</td></tr>
+              <tr><td>Lille</td><td class="num" style="color:#D97706;">91</td><td class="num" style="color:#D97706;">91</td><td class="num">99</td><td class="num">99</td><td class="num">100</td><td class="num" style="color:#D97706;">92</td><td class="num">99</td><td class="num">100</td><td class="num" style="color:#D97706;">94</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td>Lyon</td><td class="num">100</td><td class="num">97</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">95</td><td class="num">99</td><td class="num">100</td><td class="num">94</td><td class="num" style="color:#9CA3AF;">—</td><td class="num">100</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td>Montpellier</td><td class="num">97</td><td class="num" style="color:var(--red);font-weight:700;">89</td><td class="num">98</td><td class="num">98</td><td class="num">99</td><td class="num">98</td><td class="num">100</td><td class="num">100</td><td class="num" style="color:#D97706;">93</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num">100</td></tr>
+              <tr><td style="color:var(--red);font-weight:700;">Nice ⚠</td><td class="num" style="color:var(--red);font-weight:700;">87</td><td class="num" style="color:var(--red);font-weight:700;">84</td><td class="num">99</td><td class="num">98</td><td class="num">100</td><td class="num" style="color:#D97706;">93</td><td class="num">100</td><td class="num" style="color:var(--red);font-weight:700;">71</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:var(--red);font-weight:700;">84</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num">100</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td style="color:var(--red);">Pau</td><td class="num" style="color:var(--red);font-weight:700;">86</td><td class="num" style="color:var(--red);font-weight:700;">87</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">94</td><td class="num">100</td><td class="num">100</td><td class="num">95</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td>Rennes</td><td class="num">100</td><td class="num" style="color:#D97706;">94</td><td class="num">100</td><td class="num">100</td><td class="num">99</td><td class="num">96</td><td class="num">100</td><td class="num">95</td><td class="num">100</td><td class="num" style="color:#D97706;">90</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td>Strasbourg</td><td class="num">99</td><td class="num">98</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">95</td><td class="num">99</td><td class="num" style="color:#D97706;">92</td><td class="num" style="color:#D97706;">93</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num">100</td><td class="num">100</td><td class="num">100</td></tr>
+              <tr><td style="color:var(--red);font-weight:700;">Toulon ⚠</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:var(--red);font-weight:700;">0</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td style="color:var(--red);">Toulouse</td><td class="num" style="color:var(--red);font-weight:700;">84</td><td class="num" style="color:#D97706;">91</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">96</td><td class="num">100</td><td class="num">95</td><td class="num">100</td><td class="num">100</td><td class="num">95</td><td class="num">100</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td></tr>
+              <tr><td>Tours</td><td class="num">100</td><td class="num">97</td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td class="num">97</td><td class="num">100</td><td class="num">100</td><td class="num">97</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num" style="color:#9CA3AF;">—</td><td class="num">100</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="spacer-sm"></div>
+        <div class="alert alert-danger">
+          <p><strong>Nice</strong> est le campus le plus fragile — délivrabilité dégradée sur presque toutes les familles (1.1 : 87 %, 2.1 : 84 %, 4.1 : 71 %, 7.1 : 84 %). <strong>Toulon</strong> affiche 0 % partout — aucun email n'arrive. Ces deux campus nécessitent un audit technique urgent.</p>
+        </div>
+      </div>
+
+      <!-- ── TOP / ALERTES ── -->
+      <div class="view-panel" id="m-top">
+
+        <h3 class="sec-title">Top performances & Anomalies critiques</h3>
+        <div class="sec-sub">Classement par taux de clic (top) et délivrabilité (alertes)</div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top:3px solid var(--green);">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--green);">🏆 Top clics</h4>
+            <table>
+              <thead><tr><th>Email</th><th>Campus</th><th style="text-align:right">Envois</th><th style="text-align:right">Taux clic</th></tr></thead>
+              <tbody>
+                <tr><td><strong>4.1</strong></td><td>Toulouse</td><td class="num">19</td><td class="num hl">22,22 %</td></tr>
+                <tr><td><strong>14.2</strong></td><td>Rouen</td><td class="num">16</td><td class="num hl">18,75 %</td></tr>
+                <tr><td><strong>4.1</strong></td><td>Montpellier</td><td class="num">14</td><td class="num hl">14,29 %</td></tr>
+                <tr><td><strong>14.3</strong></td><td>Rouen</td><td class="num">16</td><td class="num hl">12,50 %</td></tr>
+                <tr><td><strong>14.2</strong></td><td>Toulouse</td><td class="num">20</td><td class="num hl">10,00 %</td></tr>
+                <tr><td><strong>14.2</strong></td><td>Bordeaux</td><td class="num">51</td><td class="num hl">9,80 %</td></tr>
+                <tr><td><strong>14.2</strong></td><td>Strasbourg</td><td class="num">22</td><td class="num hl">9,09 %</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:12px;font-size:12px;color:rgba(46,32,23,.5);">Les emails 4.1 (entretien planifié) et 14.2 (recherche alternance) sont les plus engageants. Leur CTA doit être analysé et répliqué.</p>
+          </div>
+
+          <div class="card" style="border-top:3px solid var(--red);">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--red);">🚨 Anomalies critiques</h4>
+            <table>
+              <thead><tr><th>Email</th><th>Campus</th><th style="text-align:right">Envois</th><th style="text-align:right">Délivrabilité</th></tr></thead>
+              <tbody>
+                <tr><td><strong>13.1</strong></td><td style="color:var(--red);font-weight:700;">Rouen</td><td class="num">2</td><td class="num" style="color:var(--red);font-weight:700;">0,00 %</td></tr>
+                <tr><td><strong>12.1</strong></td><td style="color:var(--red);">Montpellier</td><td class="num">2</td><td class="num" style="color:var(--red);font-weight:700;">50,00 %</td></tr>
+                <tr><td><strong>10.1</strong></td><td style="color:var(--red);">Pau</td><td class="num">5</td><td class="num" style="color:var(--red);font-weight:700;">60,00 %</td></tr>
+                <tr><td><strong>12.1</strong></td><td style="color:var(--red);">Marseille</td><td class="num">3</td><td class="num" style="color:var(--red);font-weight:700;">66,67 %</td></tr>
+                <tr><td><strong>4.1</strong></td><td style="color:var(--red);">Nice</td><td class="num">7</td><td class="num" style="color:var(--red);font-weight:700;">71,43 %</td></tr>
+                <tr><td><strong>1.1</strong></td><td style="color:var(--red);">Toulouse</td><td class="num">45</td><td class="num" style="color:var(--red);font-weight:700;">84,44 %</td></tr>
+                <tr><td><strong>2.1</strong></td><td style="color:var(--red);">Nice</td><td class="num">148</td><td class="num" style="color:var(--red);font-weight:700;">84,46 %</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top:12px;font-size:12px;color:rgba(46,32,23,.5);">13.1 Rouen : 2 envois, 0 délivré, 2 bounces. Anomalie critique à traiter immédiatement.</p>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <h3 class="sec-title">Détail par famille email</h3>
+        <div class="sec-sub">Résumé opérationnel de chaque groupe</div>
+
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">1.1 · Messagerie / à relancer <span class="pill pill-red" style="margin-left:8px;">Nice 87 % · Toulouse 84 % · Pau 86 %</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">19 campus · Premiers emails de séquence · Taux d'ouverture quasi nuls. Délivrabilité à corriger avant toute relance de volume.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">2.1–2.4 · Première relance <span class="pill pill-red" style="margin-left:8px;">Nice 84 % · Montpellier 89 %</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Volume solide. Délivrabilité s'améliore à partir de 2.2 (97–100 %). Bayonne seul clic observé sur 2.4 (1,23 %).</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">3.1–3.2 · Étudiant pas intéressé <span class="pill pill-orange" style="margin-left:8px;">Lyon 289 envois</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Lyon est le plus gros volume (289 envois) mais seulement 1 ouverture à 0,36 %. Grenoble 91 %. Nice 3.2 : seul clic de la famille.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">4.1 · Entretien planifié <span class="pill pill-green" style="margin-left:8px;">Meilleur engagement</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Toulouse 22,22 % clic · Montpellier 14,29 % · Angers 18,18 %. Meilleurs résultats du périmètre — à analyser et répliquer.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">6.1–6.4 · Plus intéressé avant entretien <span class="pill pill-green" style="margin-left:8px;">Délivrabilité 93–100 %</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Délivrabilité rétablie à partir de 6.2. Engagement faible. Points chauds 6.1 : Montpellier 93 %, Angers 93 %, Strasbourg 93 %.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">7.1–7.4 · Pas venu à l'entretien <span class="pill pill-red" style="margin-left:8px;">Nice systématiquement fragile</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Nice fragile à chaque email (7.1 : 84 %). Toulouse montre les meilleurs signaux : 7.4 16,67 % ouverture.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">8 → 13 · Post-entretien / Coaching / Admission <span class="pill pill-red" style="margin-left:8px;">13.1 Rouen CRITIQUE</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Volumes faibles. 13.1 Rouen : 0 % délivrabilité. 12.1 Montpellier : 50 %. 10.1 Pau : 60 %. Anomalies à traiter.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">14.1–14.4 · Recherche d'alternance <span class="pill pill-green" style="margin-left:8px;">Famille la plus solide</span></h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">14.2 est le meilleur email du périmètre. Rouen 18,75 % clic, Bordeaux 9,80 %, Strasbourg 9,09 %. CTA à répliquer en priorité.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">15–16 · Perdu pendant accompagnement / Étudiant placé</h4>
+          <p style="font-size:12px;color:rgba(46,32,23,.6);">Délivrabilité saine. Nice 15.1 : 50 % (signal faible). 16.1 Bordeaux : 33 % ouverture en fin de funnel.</p>
+        </div>
+      </div>
+
+      <!-- ── SYNTHÈSE & PRIORITÉS ── -->
+      <div class="view-panel" id="m-synthese">
+
+        <h3 class="sec-title">Synthèse chiffrée <span class="pill pill-marron">4 lectures opérationnelles</span></h3>
+        <div class="spacer-sm"></div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top:3px solid var(--red);">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">A · Premières séquences : les plus fragiles</h4>
+            <ul class="insight-list" style="margin:0;">
+              <li>1.1 Nice — 87,18 % délivrabilité</li>
+              <li>1.1 Pau — 85,71 %</li>
+              <li>1.1 Toulouse — 84,44 %</li>
+              <li>2.1 Montpellier — 89,40 %</li>
+              <li>2.1 Nice — 84,46 %</li>
+              <li>3.1 Grenoble — 91,30 %</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top:3px solid var(--green);">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">B · Workflows avancés : délivrabilité restaurée</h4>
+            <ul class="insight-list" style="margin:0;">
+              <li>À partir de 6.x — retour à 100 % quasi systématique</li>
+              <li>14.x — délivrabilité parfaite sur toutes les lignes</li>
+              <li>15.x et 16.x — 100 % sur Bordeaux, Rennes, Angers</li>
+              <li>Les listes se nettoient naturellement au fil du funnel</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top:3px solid var(--orange);">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">C · Top emails engageants</h4>
+            <ul class="insight-list" style="margin:0;">
+              <li>4.1 Toulouse — 22,22 % ouv. + 22,22 % clic</li>
+              <li>4.1 Montpellier — 21,43 % ouv. + 14,29 % clic</li>
+              <li>14.2 Rouen — 18,75 % ouv. + 18,75 % clic</li>
+              <li>14.2 Bordeaux — 11,76 % ouv. + 9,80 % clic</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top:3px solid var(--red);">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">D · Anomalies critiques</h4>
+            <ul class="insight-list" style="margin:0;">
+              <li style="border-left-color:var(--red);">13.1 Rouen — 0,00 % délivrabilité</li>
+              <li style="border-left-color:var(--red);">12.1 Montpellier — 50,00 %</li>
+              <li style="border-left-color:var(--red);">10.1 Pau — 60,00 %</li>
+              <li style="border-left-color:var(--red);">15.1 Nice — 50,00 %</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <h3 class="sec-title">Priorités recommandées</h3>
+        <div class="spacer-sm"></div>
+
+        <ol class="reco-list">
+          <li><strong>Retravailler les contenus 1.1 / 2.1 / 3.1.</strong> Premiers emails de séquence — taux d'ouverture quasi nuls, délivrabilité fragile. C'est là que passe la majorité du volume. Retravailler l'objet, le contenu et le CTA avant tout autre chantier.</li>
+          <li><strong>Auditer la délivrabilité campus par campus</strong> — Nice, Pau, Montpellier, Toulouse, Rouen. Audit technique des listes (suppression emails invalides, warming, réputation domaine).</li>
+          <li><strong>Répliquer la logique CTA de 4.1 et 14.2.</strong> Ces emails prouvent qu'un meilleur niveau est atteignable. Analyser leur structure et la transposer aux emails 1.1, 2.x et 3.x.</li>
+          <li><strong>Vérifier les 18 familles sans métriques.</strong> Clarifier si elles sont actives, en pause, ou absentes des exports HubSpot.</li>
+        </ol>
+
+        <div class="alert alert-info">
+          <p><strong>Limite :</strong> les désinscriptions ne figurent pas dans les exports utilisés. Une prochaine version pourra les intégrer si les exports HubSpot sont complétés.</p>
+        </div>
+      </div>
+
+    </div><!-- /.module-mailing -->
+
+    <!-- ═══════ MODULE: RÉSEAUX SOCIAUX ═══════ -->
+    <div class="module-content" id="module-reseaux">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('reseaux','rs-instagram')">Instagram</button>
+        <button class="view-tab" onclick="switchModuleView('reseaux','rs-tiktok')">TikTok</button>
+        <button class="view-tab" onclick="switchModuleView('reseaux','rs-linkedin')">LinkedIn</button>
+        <button class="view-tab" onclick="switchModuleView('reseaux','rs-youtube')">YouTube</button>
+      </div>
+      <div class="view-panel active" id="rs-instagram">
+        <div class="module-placeholder">
+          <div class="ph-icon">📸</div>
+          <h3>Instagram</h3>
+          <p>Reach, engagement, croissance followers, top posts<br>Par marque : FASUP · Axel · Hugo</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Followers</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Taux engagement</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Reach moyen</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Clics lien bio</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="rs-tiktok">
+        <div class="module-placeholder">
+          <div class="ph-icon">🎵</div>
+          <h3>TikTok</h3>
+          <p>Vues, partages, croissance, top vidéos<br>Par marque : FASUP · Axel · Hugo</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Followers</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Vues moyennes</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Taux engagement</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Partages</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="rs-linkedin">
+        <div class="module-placeholder">
+          <div class="ph-icon">💼</div>
+          <h3>LinkedIn</h3>
+          <p>Impressions, clics, abonnés, posts engageants<br>Page FASUP' entreprise</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Abonnés</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Impressions / mois</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Taux de clic</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Leads générés</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="rs-youtube">
+        <div class="module-placeholder">
+          <div class="ph-icon">▶️</div>
+          <h3>YouTube</h3>
+          <p>Vues, durée de visionnage, abonnés, CTR miniatures</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Abonnés</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Vues / mois</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Durée moy.</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">CTR miniatures</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /.module-reseaux -->
+
+    <!-- ═══════ MODULE: CAMPAGNES ADS ═══════ -->
+    <div class="module-content" id="module-ads">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('ads','ads-overview')">Vue globale</button>
+        <button class="view-tab" onclick="switchModuleView('ads','ads-meta')">Meta Ads</button>
+        <button class="view-tab" onclick="switchModuleView('ads','ads-linkedin')">LinkedIn Ads</button>
+        <button class="view-tab" onclick="switchModuleView('ads','ads-ab')">A/B Tests</button>
+      </div>
+      <div class="view-panel active" id="ads-overview">
+        <div class="module-placeholder">
+          <div class="ph-icon">📣</div>
+          <h3>Campagnes publicitaires</h3>
+          <p>Budget global, impressions, CPC, CPL, ROAS</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Budget dépensé</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Impressions</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">CPL moyen</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">ROAS</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="ads-meta">
+        <div class="module-placeholder">
+          <div class="ph-icon">📘</div>
+          <h3>Meta Ads (Facebook / Instagram)</h3>
+          <p>Campagnes actives, audiences, résultats par objectif</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Campagnes actives</div><div class="kpi-val orange">—</div></div>
+            <div class="kpi"><div class="kpi-label">CPC moyen</div><div class="kpi-val">—</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Leads générés</div><div class="kpi-val">—</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Budget / mois</div><div class="kpi-val">—</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="ads-linkedin">
+        <div class="module-placeholder">
+          <div class="ph-icon">💼</div>
+          <h3>LinkedIn Ads</h3>
+          <p>Campagnes sponsorisées, InMail, audiences B2B</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Campagnes</div><div class="kpi-val orange">—</div></div>
+            <div class="kpi"><div class="kpi-label">CPC moyen</div><div class="kpi-val">—</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">CTR</div><div class="kpi-val">—</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Leads</div><div class="kpi-val">—</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="ads-ab">
+        <div class="module-placeholder">
+          <div class="ph-icon">🧪</div>
+          <h3>A/B Tests</h3>
+          <p>Tests en cours, résultats, gagnants, learnings</p>
+        </div>
+      </div>
+    </div><!-- /.module-ads -->
+
+    <!-- ═══════ MODULE: SALONS ÉTUDIANTS ═══════ -->
+    <div class="module-content" id="module-salons">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('salons','sal-overview')">Vue globale</button>
+        <button class="view-tab" onclick="switchModuleView('salons','sal-calendrier')">Calendrier</button>
+        <button class="view-tab" onclick="switchModuleView('salons','sal-bilan')">Bilans post-salon</button>
+      </div>
+      <div class="view-panel active" id="sal-overview">
+        <div class="module-placeholder">
+          <div class="ph-icon">🎪</div>
+          <h3>Salons étudiants</h3>
+          <p>KPI globaux : nombre de salons, coût total, leads générés, ROI</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Salons réalisés</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Budget total</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Leads collectés</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Coût / lead</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="sal-calendrier">
+        <div class="module-placeholder">
+          <div class="ph-icon">📅</div>
+          <h3>Calendrier des salons</h3>
+          <p>Planning annuel, villes, dates, équipe mobilisée</p>
+        </div>
+      </div>
+      <div class="view-panel" id="sal-bilan">
+        <div class="module-placeholder">
+          <div class="ph-icon">📋</div>
+          <h3>Bilans post-salon</h3>
+          <p>Leads par salon, taux conversion, ROI par événement</p>
+        </div>
+      </div>
+    </div><!-- /.module-salons -->
+
+    <!-- ═══════ MODULE: LANDING PAGES ═══════ -->
+    <div class="module-content" id="module-landing">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('landing','lp-overview')">Vue globale</button>
+        <button class="view-tab" onclick="switchModuleView('landing','lp-pages')">Pages actives</button>
+        <button class="view-tab" onclick="switchModuleView('landing','lp-formulaires')">Formulaires & CTA</button>
+      </div>
+      <div class="view-panel active" id="lp-overview">
+        <div class="module-placeholder">
+          <div class="ph-icon">🌐</div>
+          <h3>Landing pages</h3>
+          <p>Trafic, taux de conversion par page, sources</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Pages actives</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Visites / mois</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Taux conversion</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Leads générés</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="lp-pages">
+        <div class="module-placeholder">
+          <div class="ph-icon">📄</div>
+          <h3>Pages actives</h3>
+          <p>Liste des landing pages, URL, trafic, conversion</p>
+        </div>
+      </div>
+      <div class="view-panel" id="lp-formulaires">
+        <div class="module-placeholder">
+          <div class="ph-icon">📝</div>
+          <h3>Formulaires & CTA</h3>
+          <p>Taux de soumission, champs, performance par formulaire</p>
+        </div>
+      </div>
+    </div><!-- /.module-landing -->
+
+    <!-- ═══════ MODULE: TUNNEL DE CONVERSION ═══════ -->
+    <div class="module-content" id="module-tunnel">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('tunnel','tun-global')">Funnel global</button>
+        <button class="view-tab" onclick="switchModuleView('tunnel','tun-canal')">Par canal</button>
+        <button class="view-tab" onclick="switchModuleView('tunnel','tun-campus')">Par campus</button>
+      </div>
+      <div class="view-panel active" id="tun-global">
+        <div class="module-placeholder">
+          <div class="ph-icon">🔄</div>
+          <h3>Tunnel de conversion</h3>
+          <p>Vue → Clic → Lead → RDV → Inscription<br>Taux de passage à chaque étape</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Vues totales</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Leads</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">RDV obtenus</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">Inscrits</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="tun-canal">
+        <div class="module-placeholder">
+          <div class="ph-icon">📊</div>
+          <h3>Funnel par canal</h3>
+          <p>Comparaison du tunnel par source d'acquisition</p>
+        </div>
+      </div>
+      <div class="view-panel" id="tun-campus">
+        <div class="module-placeholder">
+          <div class="ph-icon">🏫</div>
+          <h3>Funnel par campus</h3>
+          <p>Performance de chaque campus dans le tunnel</p>
+        </div>
+      </div>
+    </div><!-- /.module-tunnel -->
+
+    <!-- ═══════ MODULE: BUDGET & ROI ═══════ -->
+    <div class="module-content" id="module-budget">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('budget','bud-overview')">Vue globale</button>
+        <button class="view-tab" onclick="switchModuleView('budget','bud-canal')">Par canal</button>
+        <button class="view-tab" onclick="switchModuleView('budget','bud-mensuel')">Bilan mensuel</button>
+      </div>
+      <div class="view-panel active" id="bud-overview">
+        <div class="module-placeholder">
+          <div class="ph-icon">💰</div>
+          <h3>Budget & ROI</h3>
+          <p>Budget consommé, coût/lead, coût/placé, ROI par action</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Budget total</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Dépensé</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">Coût / lead</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-marron"><div class="kpi-label">ROI global</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="bud-canal">
+        <div class="module-placeholder">
+          <div class="ph-icon">📊</div>
+          <h3>Budget par canal</h3>
+          <p>Ads, salons, com, outils — coût et retour par poste</p>
+        </div>
+      </div>
+      <div class="view-panel" id="bud-mensuel">
+        <div class="module-placeholder">
+          <div class="ph-icon">📋</div>
+          <h3>Bilan mensuel</h3>
+          <p>Actions réalisées, résultats, leads, RDV, CA généré</p>
+        </div>
+      </div>
+    </div><!-- /.module-budget -->
+
+    <!-- ═══════ MODULE: PRICING ═══════ -->
+    <div class="module-content" id="module-pricing">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchModuleView('pricing','pri-grille')">Grille tarifaire</button>
+        <button class="view-tab" onclick="switchModuleView('pricing','pri-simulation')">Simulation CA</button>
+        <button class="view-tab" onclick="switchModuleView('pricing','pri-concurrence')">Concurrence</button>
+      </div>
+      <div class="view-panel active" id="pri-grille">
+        <div class="module-placeholder">
+          <div class="ph-icon">🏷️</div>
+          <h3>Grille tarifaire</h3>
+          <p>Prix par formation, par campus, frais annexes</p>
+          <div class="spacer-sm"></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Formations</div><div class="kpi-val orange">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi"><div class="kpi-label">Prix moyen</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+            <div class="kpi kpi-green"><div class="kpi-label">CA / étudiant</div><div class="kpi-val">—</div><div class="kpi-detail">À renseigner</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="pri-simulation">
+        <div class="module-placeholder">
+          <div class="ph-icon">🧮</div>
+          <h3>Simulation CA</h3>
+          <p>Projection selon taux de remplissage par campus</p>
+        </div>
+      </div>
+      <div class="view-panel" id="pri-concurrence">
+        <div class="module-placeholder">
+          <div class="ph-icon">⚖️</div>
+          <h3>Comparatif concurrence</h3>
+          <p>Positionnement prix vs écoles concurrentes</p>
+        </div>
+      </div>
+    </div><!-- /.module-pricing -->
+
+  </div><!-- /.content -->
+</div><!-- /.main -->
+</div><!-- /.app -->
+
+<!-- ═══════ MODAL AJOUT DONNÉES ═══════ -->
+<div class="data-modal-overlay" id="data-modal-overlay" onclick="if(event.target===this)closeDataModal()">
+  <div class="data-modal">
+    <h3>📝 Ajouter des données</h3>
+    <div class="modal-sub" id="modal-module-name">Module : —</div>
+    <label for="data-date">Date des données</label>
+    <input type="date" id="data-date">
+    <label for="data-content">Informations à intégrer</label>
+    <textarea id="data-content" placeholder="Colle ici tes stats, KPI, chiffres...&#10;&#10;Exemple :&#10;Followers : 2 450&#10;Engagement : 3,2 %&#10;Top post : Reel alternance — 12k vues"></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeDataModal()">Annuler</button>
+      <button class="modal-btn-copy" onclick="copyDataToClipboard()">📋 Copier pour Claude</button>
+    </div>
+  </div>
+</div>
+<div class="modal-toast" id="modal-toast">Données copiées — colle-les dans Claude !</div>
+
+<script>
+// ═══════ Sidebar ═══════
+function toggleSidebar() {
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('sidebar-overlay');
+  var open = sb.classList.toggle('open');
+  ov.style.display = open ? 'block' : 'none';
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').style.display = 'none';
+}
+
+// ═══════ Navigation ═══════
+function switchModule(mod) {
+  document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+  var el = document.querySelector('[data-module="'+mod+'"]');
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.module-content').forEach(m => m.style.display = 'none');
+  var modEl = document.getElementById('module-'+mod);
+  if (modEl) modEl.style.display = 'block';
+  var titles = {
+    leads: ['Leads & Transformation', 'Provenance des contacts · HubSpot · À date du 3 juillet 2026'],
+    mailing: ['Mailing & Campagnes', 'Audit workflows HubSpot · 33 familles · 19 campus · 03/07/2026'],
+    reseaux: ['Réseaux sociaux', 'Instagram · TikTok · LinkedIn · YouTube · FASUP / Axel / Hugo'],
+    ads: ['Campagnes Ads', 'Meta Ads · LinkedIn Ads · A/B Tests · Performance'],
+    salons: ['Salons étudiants', 'Calendrier · Leads · Conversion · ROI par événement'],
+    landing: ['Landing pages', 'Pages · Formulaires · CTA · Taux de conversion'],
+    tunnel: ['Tunnel de conversion', 'Vue → Clic → Lead → RDV → Inscription'],
+    budget: ['Budget & ROI', 'Coût par canal · Coût/lead · Coût/placé · ROI global'],
+    pricing: ['Pricing', 'Grille tarifaire · Simulation CA · Concurrence']
+  };
+  var t = titles[mod] || ['FASUP\' Hub', ''];
+  document.querySelector('.topbar-title').textContent = t[0];
+  document.querySelector('.topbar-sub').textContent = t[1];
+  closeSidebar();
+  window.scrollTo(0,0);
+  if (mod === 'mailing') initMailCharts();
+}
+
+function switchView(view) {
+  var panel = document.getElementById('module-leads');
+  panel.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  panel.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('view-'+view).classList.add('active');
+}
+
+function switchMailView(view) {
+  switchModuleView('mailing', view);
+}
+
+function switchModuleView(mod, view) {
+  var panel = document.getElementById('module-'+mod);
+  panel.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  panel.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(view).classList.add('active');
+}
+
+// ═══════ Responsive burger ═══════
+(function(){
+  var mq = window.matchMedia('(max-width:1024px)');
+  function check(e){
+    document.getElementById('burger').style.display = e.matches ? 'block' : 'none';
+    if (!e.matches) closeSidebar();
+  }
+  mq.addEventListener('change', check);
+  check(mq);
+})();
+
+// ═══════ Charts ═══════
+document.addEventListener('DOMContentLoaded', function() {
+
+  var LABELS = ['Salons','Site web','Parcoursup','Indeed','Bouche-à-oreille','RS / pub / jeux','Cand. parallèles','Inconnu'];
+  var orange = '#F69D00';
+  var marron = '#2E2017';
+
+  Chart.defaults.font.family = "'Montserrat', sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#5a4436';
+
+  var donutColors = ['#2E2017','#5a4436','#F69D00','#a08872','#FBDEAA','#c4a66e','#8b6f47','#d4b896'];
+  var donutColors2 = ['#F69D00','#f5b740','#2E2017','#e8a520','#FBDEAA','#d4920a','#c28400','#f7d080'];
+
+  // Fiches 2025
+  new Chart(document.getElementById('chart-fiches-2025'), {
+    type:'doughnut',
+    data:{ labels:LABELS, datasets:[{ data:[124,67,322,2,85,97,124,303], backgroundColor:donutColors, borderWidth:2, borderColor:'#F7F6F5' }] },
+    options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ padding:10, usePointStyle:true, pointStyleWidth:8, font:{size:10} } } } }
+  });
+
+  // Fiches 2026
+  new Chart(document.getElementById('chart-fiches-2026'), {
+    type:'doughnut',
+    data:{ labels:LABELS, datasets:[{ data:[1100,54,1474,177,99,30,78,267], backgroundColor:donutColors2, borderWidth:2, borderColor:'#F7F6F5' }] },
+    options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ padding:10, usePointStyle:true, pointStyleWidth:8, font:{size:10} } } } }
+  });
+
+  // Placés
+  new Chart(document.getElementById('chart-places'), {
+    type:'bar',
+    data:{ labels:LABELS, datasets:[
+      { label:'2025', data:[25,20,118,0,64,21,62,129], backgroundColor:marron, borderRadius:4 },
+      { label:'2026', data:[37,4,40,4,12,0,3,19], backgroundColor:orange, borderRadius:4 }
+    ] },
+    options:{ responsive:true, plugins:{ legend:{ labels:{ usePointStyle:true, pointStyleWidth:8 } } }, scales:{ x:{ grid:{display:false} }, y:{ beginAtZero:true, grid:{color:'rgba(46,32,23,.05)'} } } }
+  });
+
+  // Taux
+  new Chart(document.getElementById('chart-taux'), {
+    type:'bar',
+    data:{ labels:LABELS, datasets:[
+      { label:'2025', data:[20.2,29.9,36.6,0,75.3,21.6,50,42.6], backgroundColor:marron, borderRadius:4 },
+      { label:'2026', data:[3.4,7.4,2.7,2.3,12.1,0,3.8,7.1], backgroundColor:orange, borderRadius:4 }
+    ] },
+    options:{ indexAxis:'y', responsive:true, plugins:{ legend:{ labels:{ usePointStyle:true, pointStyleWidth:8 } } }, scales:{ x:{ beginAtZero:true, grid:{color:'rgba(46,32,23,.05)'}, ticks:{callback:function(v){return v+' %';}} }, y:{ grid:{display:false} } } }
+  });
+
+  // CA
+  new Chart(document.getElementById('chart-ca'), {
+    type:'bar',
+    data:{ labels:LABELS, datasets:[
+      { label:'CA 2025', data:[182500,146000,861400,0,467200,153300,452600,941700], backgroundColor:marron, borderRadius:4 },
+      { label:'CA 2026', data:[270100,29200,292000,29200,87600,0,21900,138700], backgroundColor:orange, borderRadius:4 }
+    ] },
+    options:{ responsive:true, plugins:{ legend:{ labels:{ usePointStyle:true, pointStyleWidth:8 } }, tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+c.raw.toLocaleString('fr-FR')+' €'; } } } }, scales:{ x:{ grid:{display:false} }, y:{ beginAtZero:true, grid:{color:'rgba(46,32,23,.05)'}, ticks:{callback:function(v){return (v/1000)+'k €';}} } } }
+  });
+
+  // ROI
+  new Chart(document.getElementById('chart-roi'), {
+    type:'bar',
+    data:{ labels:['2024-2025','2025-2026','Total'], datasets:[
+      { label:'Coût', data:[5000,8000,13000], backgroundColor:'#5a4436', borderRadius:4 },
+      { label:'CA estimé', data:[299300,29200,328500], backgroundColor:orange, borderRadius:4 }
+    ] },
+    options:{ responsive:true, plugins:{ legend:{ labels:{ usePointStyle:true, pointStyleWidth:8 } }, tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+c.raw.toLocaleString('fr-FR')+' €'; } } } }, scales:{ x:{ grid:{display:false} }, y:{ beginAtZero:true, grid:{color:'rgba(46,32,23,.05)'}, ticks:{callback:function(v){return (v/1000)+'k €';}} } } }
+  });
+});
+
+var mailChartsInit = false;
+function initMailCharts() {
+  if (mailChartsInit) return;
+  mailChartsInit = true;
+  var orange = '#F69D00';
+  new Chart(document.getElementById('chart-mail-deliv'), {
+    type:'bar',
+    data:{ labels:['Grenoble','Lille','Montpellier','Nice (F1)','Nice (F2)','Pau (F1)','Pau (F2)','Toulouse'], datasets:[
+      { label:'Délivrabilité %', data:[91.30,91.96,89.40,87.18,84.46,85.71,87.18,84.44], backgroundColor:function(ctx){ return ctx.raw < 87 ? '#e74c3c' : ctx.raw < 90 ? orange : '#27ae60'; }, borderRadius:4 }
+    ] },
+    options:{ indexAxis:'y', responsive:true, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:function(c){ return c.raw.toFixed(2)+' %'; } } } }, scales:{ x:{ min:80, max:95, grid:{color:'rgba(46,32,23,.05)'}, ticks:{callback:function(v){return v+'%';}} }, y:{ grid:{display:false} } } }
+  });
+  new Chart(document.getElementById('chart-mail-open'), {
+    type:'bar',
+    data:{ labels:['Ouverture moy.','Clic moyen'], datasets:[
+      { label:'Taux', data:[14.2,4.1], backgroundColor:[orange,'#2E2017'], borderRadius:4 }
+    ] },
+    options:{ responsive:true, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:function(c){ return c.raw+' %'; } } } }, scales:{ x:{ grid:{display:false} }, y:{ beginAtZero:true, max:20, grid:{color:'rgba(46,32,23,.05)'}, ticks:{callback:function(v){return v+'%';}} } } }
+  });
+}
+
+// ═══════ Data modal ═══════
+var currentModuleName = 'leads';
+function getActiveModuleName() {
+  var el = document.querySelector('.sidebar-nav a.active');
+  return el ? el.textContent.trim().replace(/^[^\w\s]+\s*/, '') : 'Module';
+}
+function getActiveModuleKey() {
+  var el = document.querySelector('.sidebar-nav a.active');
+  return el ? el.getAttribute('data-module') : 'leads';
+}
+function openDataModal() {
+  var name = getActiveModuleName();
+  var activeTab = '';
+  var mod = document.querySelector('.module-content[style*="block"], .module-content.active');
+  if (mod) {
+    var tab = mod.querySelector('.view-tab.active');
+    if (tab) activeTab = ' → ' + tab.textContent.trim();
+  }
+  document.getElementById('modal-module-name').textContent = 'Module : ' + name + activeTab;
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('data-date').value = today;
+  document.getElementById('data-content').value = '';
+  document.getElementById('data-modal-overlay').classList.add('open');
+}
+function closeDataModal() {
+  document.getElementById('data-modal-overlay').classList.remove('open');
+}
+function copyDataToClipboard() {
+  var modName = document.getElementById('modal-module-name').textContent;
+  var date = document.getElementById('data-date').value;
+  var content = document.getElementById('data-content').value.trim();
+  if (!content) { document.getElementById('data-content').style.borderColor = 'var(--red)'; return; }
+  var text = '📊 FASUP\' Hub — Mise à jour données\n';
+  text += modName + '\n';
+  text += 'Date : ' + date + '\n';
+  text += '───────────────────\n';
+  text += content + '\n';
+  text += '───────────────────\n';
+  text += 'Intègre ces données dans le module correspondant du FASUP\' Hub.';
+  navigator.clipboard.writeText(text).then(function() {
+    closeDataModal();
+    var toast = document.getElementById('modal-toast');
+    toast.style.display = 'block';
+    setTimeout(function() { toast.style.display = 'none'; }, 2500);
+  });
+}
+</script>
+</body>
+</html>
